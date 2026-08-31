@@ -1,0 +1,88 @@
+{
+  "createdAt": "2026-08-31T03:45:54.552Z",
+  "productionOrigin": "https://tengyodalogistics.com",
+  "build": "vinext static export",
+  "contentPages": 15,
+  "notFoundPage": true,
+  "localAssetsChecked": 21,
+  "internalReferencesChecked": 759,
+  "anchorsChecked": 120,
+  "publicFileCount": 65,
+  "publicBytes": 11032707,
+  "routes": [
+    {
+      "url": "https://tengyodalogistics.com/",
+      "file": "website/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/",
+      "file": "website/services/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/blog/",
+      "file": "website/blog/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/freight-forwarding/",
+      "file": "website/services/freight-forwarding/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/china-import-export/",
+      "file": "website/services/china-import-export/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/air-freight/",
+      "file": "website/services/air-freight/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/oversize-freight/",
+      "file": "website/services/oversize-freight/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/sea-freight/",
+      "file": "website/services/sea-freight/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/transport-warehousing/",
+      "file": "website/services/transport-warehousing/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/roro-project-cargo/",
+      "file": "website/services/roro-project-cargo/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/cargo-consolidation/",
+      "file": "website/services/cargo-consolidation/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/services/international-express/",
+      "file": "website/services/international-express/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/blog/buying-from-china-checklist/",
+      "file": "website/blog/buying-from-china-checklist/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/blog/express-air-lcl-fcl-guide/",
+      "file": "website/blog/express-air-lcl-fcl-guide/index.html"
+    },
+    {
+      "url": "https://tengyodalogistics.com/blog/avoid-destination-shipping-charges/",
+      "file": "website/blog/avoid-destination-shipping-charges/index.html"
+    }
+  ],
+  "assertions": [
+    "all routes pre-rendered",
+    "all referenced local assets and anchors exist",
+    "production canonical URLs and sitemap",
+    "original wordmarks",
+    "sea-freight priority and trade lanes",
+    "RoRo homepage card",
+    "1200ms / 1.1x emitted photo hover CSS",
+    "JS and RSC retained",
+    "GA4 contact clicks not confirmed leads",
+    "no source or credentials in web root"
+  ],
+  "browserTested": false,
+  "uploadedToUserServer": false
+}
