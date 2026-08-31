@@ -27,89 +27,66 @@ jobs:
         with:
           persist-credentials: false
 
-      # Only merge the two release batches. Do not publish the old website folder.
-      - name: Merge and verify website
-        id: merge
+      # This release is for /0831/ only. Keep the official-domain release separate.
+      # Upload tengyoda-github-preview.zip to the repository root WITHOUT unpacking.
+      - name: Verify and unpack project preview
+        id: unpack
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
+          import hashlib
+          import json
           import os
-          import shutil
+          import stat
           import tempfile
-          from html.parser import HTMLParser
-          from pathlib import Path
-          from urllib.parse import unquote, urlsplit
+          import zipfile
+          from pathlib import Path, PurePosixPath
 
-          batches = (Path("github-upload-1/website"), Path("github-upload-2/website"))
-          output = Path(tempfile.mkdtemp(prefix="tengyoda-pages-", dir=os.environ["RUNNER_TEMP"]))
-          for batch in batches:
-              if not batch.is_dir() or batch.is_symlink():
-                  raise SystemExit(f"Missing or invalid batch directory: {batch}")
-              for source in sorted(batch.rglob("*")):
-                  if source.is_symlink():
-                      raise SystemExit(f"Symbolic links are not supported: {source}")
-                  if not source.is_file():
-                      continue
-                  target = output / source.relative_to(batch)
+          archive = Path("tengyoda-github-preview.zip")
+          if not archive.is_file():
+              raise SystemExit("Upload tengyoda-github-preview.zip to the repository root first. Do not unpack it.")
+          output = Path(tempfile.mkdtemp(prefix="tengyoda-preview-", dir=os.environ["RUNNER_TEMP"]))
+          with zipfile.ZipFile(archive) as zipped:
+              entries = zipped.infolist()
+              if sum(entry.file_size for entry in entries) > 50 * 1024 * 1024:
+                  raise SystemExit("Unexpected archive size.")
+              if len(entries) > 300:
+                  raise SystemExit("Unexpected archive structure.")
+              names = set()
+              for entry in entries:
+                  relative = PurePosixPath(entry.filename)
+                  if relative.is_absolute() or ".." in relative.parts or "\\" in entry.filename:
+                      raise SystemExit("Unsafe archive path.")
+                  if stat.S_ISLNK(entry.external_attr >> 16):
+                      raise SystemExit("Symbolic links are not permitted.")
+                  if entry.filename in names:
+                      raise SystemExit("Duplicate archive paths are not permitted.")
+                  names.add(entry.filename)
+              if "preview-release.json" not in names:
+                  raise SystemExit("Wrong ZIP: the project-preview release manifest is missing.")
+              manifest = json.loads(zipped.read("preview-release.json"))
+              if manifest.get("basePath") != "/0831" or manifest.get("contentPages") != 24:
+                  raise SystemExit("This archive is not the expected /0831/ preview.")
+              expected = manifest.get("files", {})
+              actual = {entry.filename for entry in entries if not entry.is_dir()}
+              if actual != set(expected) | {"preview-release.json"}:
+                  raise SystemExit("Files are missing from the archive or the release was changed.")
+              for name, digest in expected.items():
+                  body = zipped.read(name)
+                  if hashlib.sha256(body).hexdigest() != digest:
+                      raise SystemExit("File integrity check failed: " + name)
+                  target = output / name
                   target.parent.mkdir(parents=True, exist_ok=True)
-                  if target.exists() and target.read_bytes() != source.read_bytes():
-                      raise SystemExit(f"Conflicting files in the two batches: {target.relative_to(output)}")
-                  shutil.copyfile(source, target)
-
-          required = [
-              "index.html", "blog/index.html", "blog.html", "services/index.html",
-              "china-australia.html", "china-australia-shipping-cost.html",
-              "china-australia-shipping-time.html", "fcl-vs-lcl-china-australia.html",
-              "ddp-shipping-china-australia.html", "sitemap.xml", "robots.txt", "favicon.svg",
-              "blog/40hq-container-shipping-cost-china-australia/index.html",
-              "blog/shipping-from-china-to-australia-guide/index.html",
-              "blog/first-time-importing-from-china-guide/index.html",
-              "blog/importing-from-china-to-australia-mistakes/index.html",
-              "assets/images/blog/40hq-china-australia-cover.webp",
-          ]
-          missing = [name for name in required if not (output / name).is_file()]
-          if missing:
-              raise SystemExit("Missing files; preserve the folder structure: " + ", ".join(missing))
-
-          class Links(HTMLParser):
-              def __init__(self):
-                  super().__init__()
-                  self.references = []
-
-              def handle_starttag(self, tag, attrs):
-                  for key, value in attrs:
-                      if value and key in ("href", "src", "poster"):
-                          self.references.append(value)
-                      elif value and key == "srcset":
-                          self.references.extend(item.strip().split()[0] for item in value.split(",") if item.strip())
-
-          errors = []
-          pages = sorted(output.rglob("*.html"))
-          for page in pages:
-              relative = page.relative_to(output)
-              if str(relative) not in ("404.html", "blog.html"):
-                  if relative.name == "index.html":
-                      data_name = "index.rsc" if relative.parent == Path(".") else f"{relative.parent}.rsc"
-                  else:
-                      data_name = f"{relative}.rsc"
-                  if not (output / data_name).is_file():
-                      errors.append(f"Missing page data: {data_name}")
-              parser = Links()
-              parser.feed(page.read_text(encoding="utf-8"))
-              for reference in parser.references:
-                  url = urlsplit(reference)
-                  if url.scheme or url.netloc or not url.path:
-                      continue
-                  path = unquote(url.path)
-                  target = (output / path.lstrip("/") if path.startswith("/") else page.parent / path).resolve()
-                  if not target.is_relative_to(output) or not (target.is_file() or (target / "index.html").is_file()):
-                      errors.append(f"{page.relative_to(output)} -> {reference}")
-          if errors:
-              raise SystemExit("Broken local links or assets:\n" + "\n".join(errors[:30]))
-
-          total = sum(path.is_file() for path in output.rglob("*"))
-          print(f"Verified {total} files and {len(pages)} HTML pages. Old misplaced files are excluded.")
+                  target.write_bytes(body)
+              for required in ("index.html", "blog/index.html", "china-australia.html",
+                               "services/sea-freight/index.html", "index.rsc"):
+                  if not (output / required).is_file():
+                      raise SystemExit("Missing required page: " + required)
+              html = (output / "index.html").read_text(encoding="utf-8")
+              if "/0831/assets/" not in html or "/0831/images/" not in html:
+                  raise SystemExit("Homepage is missing the project-preview resource prefix.")
+              print(f"Verified {len(expected)} files for /0831/. Old folders are not published.")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
               stream.write(f"path={output}\n")
           PY
@@ -117,10 +94,10 @@ jobs:
       - name: Set up Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload merged website
+      - name: Upload project preview
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ${{ steps.merge.outputs.path }}
+          path: ${{ steps.unpack.outputs.path }}
 
       - name: Deploy
         id: deployment
